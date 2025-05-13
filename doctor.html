@@ -1,0 +1,453 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <title>MediBook - Doctor Portal</title>
+  <!-- Firebase and EmailJS libraries -->
+  <script src="https://www.gstatic.com/firebasejs/7.20.0/firebase-app.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/7.20.0/firebase-firestore.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/7.20.0/firebase-auth.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/emailjs-com@3/dist/email.min.js"></script>
+  <script src="firebaseConfig.js"></script>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+      font-family: 'Segoe UI', sans-serif;
+    }
+
+    body {
+      background: #0a0e1a;
+      color: #fff;
+      min-height: 100vh;
+      overflow-x: hidden;
+    }
+
+    /* Animated Gradient Background */
+    .gradient-bg {
+      position: fixed;
+      width: 100vw;
+      height: 100vh;
+      background: linear-gradient(-45deg, #0a0e1a, #1a1f2d, #2a2f3d);
+      background-size: 400% 400%;
+      animation: gradientFlow 15s ease infinite;
+      z-index: -1;
+    }
+
+    @keyframes gradientFlow {
+      0% { background-position: 0% 50%; }
+      50% { background-position: 100% 50%; }
+      100% { background-position: 0% 50%; }
+    }
+
+    /* Login Form Styling */
+    .doctor-login {
+      position: fixed;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      background: rgba(255, 255, 255, 0.05);
+      padding: 40px;
+      border-radius: 20px;
+      backdrop-filter: blur(10px);
+      box-shadow: 0 0 40px rgba(0, 180, 216, 0.2);
+      width: 400px;
+      transition: 0.3s;
+    }
+
+    .doctor-login:hover {
+      box-shadow: 0 0 60px rgba(0, 180, 216, 0.3);
+    }
+
+    .doctor-login h2 {
+      text-align: center;
+      margin-bottom: 30px;
+      font-size: 2rem;
+      background: linear-gradient(45deg, #00b4d8, #90e0ef);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+
+    .doctor-login input {
+      width: 100%;
+      padding: 15px;
+      margin: 15px 0;
+      background: rgba(255, 255, 255, 0.1);
+      border: 1px solid rgba(0, 180, 216, 0.3);
+      border-radius: 8px;
+      color: #fff;
+      font-size: 1rem;
+      transition: 0.3s;
+    }
+
+    .doctor-login input:focus {
+      outline: none;
+      border-color: #00b4d8;
+      box-shadow: 0 0 15px rgba(0, 180, 216, 0.3);
+    }
+
+    .doctor-login button {
+      width: 100%;
+      padding: 15px;
+      background: linear-gradient(45deg, #00b4d8, #0077b6);
+      border: none;
+      border-radius: 8px;
+      color: #fff;
+      font-size: 1.1rem;
+      cursor: pointer;
+      transition: 0.3s;
+      margin-top: 20px;
+    }
+
+    .doctor-login button:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 10px 20px rgba(0, 180, 216, 0.3);
+    }
+
+    /* Doctor Dashboard Styling */
+    .doctor-dashboard {
+      display: none;
+      min-height: 100vh;
+      padding: 40px;
+    }
+
+    .doctor-info {
+      text-align: center;
+      margin-bottom: 40px;
+    }
+
+    .doctor-info h3 {
+      font-size: 2rem;
+      margin-bottom: 10px;
+      color: #00b4d8;
+    }
+
+    /* Tabs Styling */
+    .doctor-tabs {
+      display: flex;
+      gap: 20px;
+      justify-content: center;
+      margin-bottom: 30px;
+    }
+
+    .doc-tab {
+      padding: 15px 30px;
+      background: rgba(255, 255, 255, 0.05);
+      border: none;
+      border-radius: 8px;
+      color: #fff;
+      cursor: pointer;
+      transition: 0.3s;
+    }
+
+    .doc-tab:hover {
+      background: rgba(255, 255, 255, 0.1);
+      transform: translateY(-2px);
+    }
+
+    .doc-tab.active {
+      background: linear-gradient(45deg, #00b4d8, #0077b6);
+    }
+
+    /* Appointment Tables */
+    .appointment-table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-top: 20px;
+      background: rgba(255, 255, 255, 0.05);
+    }
+
+    .appointment-table th {
+      background: rgba(0, 180, 216, 0.2);
+      padding: 15px;
+      text-align: left;
+    }
+
+    .appointment-table td {
+      padding: 12px;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+    }
+
+    .appointment-table tr:hover {
+      background: rgba(255, 255, 255, 0.03);
+    }
+
+    .action-btn {
+      padding: 8px 15px;
+      background: linear-gradient(45deg, #00b4d8, #0077b6);
+      border: none;
+      border-radius: 4px;
+      color: white;
+      cursor: pointer;
+      transition: 0.3s;
+    }
+
+    .action-btn:hover {
+      opacity: 0.9;
+    }
+
+    .status-badge {
+      padding: 6px 12px;
+      border-radius: 20px;
+      font-size: 0.8rem;
+      background: #00b4d8;
+      display: inline-block;
+    }
+
+    /* Responsive Design */
+    @media (max-width: 768px) {
+      .doctor-dashboard {
+        padding: 20px;
+      }
+
+      .doctor-tabs {
+        flex-direction: column;
+      }
+
+      .appointment-table {
+        display: block;
+        overflow-x: auto;
+        white-space: nowrap;
+      }
+    }
+  </style>
+</head>
+<body>
+  <!-- Animated Background -->
+  <div class="gradient-bg"></div>
+
+  <!-- Doctor Login -->
+  <div class="doctor-login" id="doctorLoginDiv">
+    <h2>👨⚕ Doctor Portal</h2>
+    <form id="doctorLoginForm">
+      <input type="text" id="doctorIdInput" placeholder="Doctor ID" required>
+      <input type="password" id="doctorPasswordInput" placeholder="Password" required>
+      <button type="submit">Access Dashboard →</button>
+    </form>
+  </div>
+
+  <!-- Doctor Dashboard -->
+  <div class="doctor-dashboard" id="doctorDashboard">
+    <div class="doctor-info">
+      <h3 id="doctorNameDisplay"></h3>
+      <p id="doctorIdDisplay"></p>
+    </div>
+
+    <nav class="doctor-tabs">
+      <button data-tab="appointmentRequests" class="doc-tab active">📥 Appointment Requests</button>
+      <button data-tab="acceptedAppointments" class="doc-tab">✅ Accepted Appointments</button>
+    </nav>
+
+    <div id="docTabContents">
+      <!-- Appointment Requests Table -->
+      <div id="appointmentRequests" class="doc-tab-content">
+        <h3>Appointment Requests</h3>
+        <table class="appointment-table">
+          <thead>
+            <tr>
+              <th>Date</th>
+              <th>Patient Name</th>
+              <th>Email</th>
+              <th>Phone</th>
+              <th>Issue</th>
+              <th>Action</th>
+            </tr>
+          </thead>
+          <tbody id="appointmentRequestsList">
+            <!-- Data populated by JavaScript -->
+          </tbody>
+        </table>
+      </div>
+
+      <!-- Accepted Appointments Table -->
+      <div id="acceptedAppointments" class="doc-tab-content" style="display:none;">
+        <h3>Accepted Appointments</h3>
+        <table class="appointment-table">
+          <thead>
+            <tr>
+              <th>Date</th>
+              <th>Patient Name</th>
+              <th>Email</th>
+              <th>Phone</th>
+              <th>Issue</th>
+              <th>Status</th>
+            </tr>
+          </thead>
+          <tbody id="acceptedAppointmentsList">
+            <!-- Data populated by JavaScript -->
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    // Initialize EmailJS
+    emailjs.init("p9iSjxJ4jmKFXzWe1");
+
+    let currentDoctor = null;
+
+    // Doctor Login Handler
+    document.getElementById("doctorLoginForm").addEventListener("submit", async (e) => {
+      e.preventDefault();
+      const doctorId = document.getElementById("doctorIdInput").value;
+      const password = document.getElementById("doctorPasswordInput").value;
+
+      try {
+        const doc = await db.collection("doctors").doc(doctorId).get();
+        if (doc.exists && doc.data().password === password) {
+          currentDoctor = { id: doctorId, ...doc.data() };
+          document.getElementById("doctorLoginDiv").style.display = "none";
+          document.getElementById("doctorDashboard").style.display = "block";
+          document.getElementById("doctorNameDisplay").textContent = `Dr. ${doc.data().name}`;
+          document.getElementById("doctorIdDisplay").textContent = `ID: ${doctorId}`;
+          loadAppointmentRequests();
+          loadAcceptedAppointments();
+        } else {
+          showNotification("⚠️ Invalid credentials!", "error");
+        }
+      } catch (error) {
+        showNotification("🚨 Login failed!", "error");
+      }
+    });
+
+    // Tab Switching
+    document.querySelectorAll(".doc-tab").forEach(button => {
+      button.addEventListener("click", function() {
+        document.querySelectorAll(".doc-tab").forEach(t => t.classList.remove("active"));
+        this.classList.add("active");
+        document.querySelectorAll(".doc-tab-content").forEach(t => t.style.display = "none");
+        document.getElementById(this.dataset.tab).style.display = "block";
+      });
+    });
+
+    // Load Appointment Requests
+    async function loadAppointmentRequests() {
+      try {
+        const snapshot = await db.collection("appointments").where("doctorAccepted", "==", false).get();
+        const tbody = document.getElementById("appointmentRequestsList");
+        tbody.innerHTML = snapshot.docs.map(doc => {
+          const data = doc.data();
+          return `
+            <tr>
+              <td>${data.date}</td>
+              <td>${data.name}</td>
+              <td>${data.email}</td>
+              <td>${data.phone}</td>
+              <td>${data.issue}</td>
+              <td>
+                <button class="action-btn" 
+                  onclick="acceptAppointment('${doc.id}', '${data.email}', '${data.name}')">
+                  Accept
+                </button>
+              </td>
+            </tr>
+          `;
+        }).join("");
+        
+        if(snapshot.empty) {
+          tbody.innerHTML = `
+            <tr>
+              <td colspan="6" style="text-align:center; padding:40px;">
+                No pending appointment requests
+              </td>
+            </tr>
+          `;
+        }
+      } catch (error) {
+        showNotification("❌ Failed to load requests", "error");
+      }
+    }
+
+    // Load Accepted Appointments
+    async function loadAcceptedAppointments() {
+      try {
+        const snapshot = await db.collection("appointments").where("doctorId", "==", currentDoctor.id).get();
+        const tbody = document.getElementById("acceptedAppointmentsList");
+        tbody.innerHTML = snapshot.docs.map(doc => {
+          const data = doc.data();
+          return `
+            <tr>
+              <td>${data.date}</td>
+              <td>${data.name}</td>
+              <td>${data.email}</td>
+              <td>${data.phone}</td>
+              <td>${data.issue}</td>
+              <td><span class="status-badge">Accepted</span></td>
+            </tr>
+          `;
+        }).join("");
+        
+        if(snapshot.empty) {
+          tbody.innerHTML = `
+            <tr>
+              <td colspan="6" style="text-align:center; padding:40px;">
+                No accepted appointments
+              </td>
+            </tr>
+          `;
+        }
+      } catch (error) {
+        showNotification("❌ Failed to load appointments", "error");
+      }
+    }
+
+    // Accept Appointment
+    async function acceptAppointment(appointmentId, userEmail, userName) {
+      const appointmentRef = db.collection("appointments").doc(appointmentId);
+      
+      try {
+        const doc = await appointmentRef.get();
+        if (doc.exists) {
+          const data = doc.data();
+          if (data.doctorAccepted) {
+            showNotification(`⚠️ Already accepted by Dr. ${data.doctorName}`, "warning");
+            return;
+          }
+          
+          await appointmentRef.update({
+            doctorAccepted: true,
+            doctorId: currentDoctor.id,
+            doctorName: currentDoctor.name
+          });
+          
+          showNotification("✅ Appointment accepted!", "success");
+          sendConfirmationEmail(userEmail, userName);
+          loadAppointmentRequests();
+          loadAcceptedAppointments();
+        }
+      } catch (error) {
+        showNotification("❌ Failed to accept appointment", "error");
+      }
+    }
+    // Send confirmation email to user using EmailJS with dynamic parameters
+    function sendConfirmationEmail(userEmail, appointmentDetails){
+        const templateParams = {
+  to_email: userEmail,
+  user_name: appointmentDetails.userName, // Ensure this value is passed
+  doctor_name: currentDoctor.name,          // Doctor’s name from login data
+  date: appointmentDetails.date             // Appointment date
+};
+
+emailjs.send("service_phczpc9", "template_zohohvg", templateParams)
+  .then((response) => {
+    console.log("Email sent successfully", response.status);
+  }, (error) => {
+    console.error("Failed to send email", error);
+  });
+
+    }
+
+    // Notification System
+    function showNotification(message, type = "success") {
+      const notification = document.createElement("div");
+      notification.className = `notification ${type}`;
+      notification.textContent = message;
+      document.body.appendChild(notification);
+      
+      setTimeout(() => notification.remove(), 3000);
+    }
+  </script>
+</body>
+</html>

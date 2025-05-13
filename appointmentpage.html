@@ -1,0 +1,247 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <title>MediBook - Appointment</title>
+  <!-- Firebase libraries -->
+  <script src="https://www.gstatic.com/firebasejs/7.20.0/firebase-app.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/7.20.0/firebase-firestore.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/7.20.0/firebase-auth.js"></script>
+  <script src="firebaseConfig.js"></script>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+      font-family: 'Segoe UI', sans-serif;
+    }
+
+    body {
+      background: #0a0e1a;
+      color: #fff;
+      min-height: 100vh;
+      overflow: hidden;
+    }
+
+    /* Animated Background */
+    .gradient-bg {
+      position: fixed;
+      width: 100vw;
+      height: 100vh;
+      background: linear-gradient(-45deg, #0a0e1a, #1a1f2d, #2a2f3d);
+      background-size: 400% 400%;
+      animation: gradientFlow 15s ease infinite;
+      z-index: -1;
+    }
+
+    @keyframes gradientFlow {
+      0% { background-position: 0% 50%; }
+      50% { background-position: 100% 50%; }
+      100% { background-position: 0% 50%; }
+    }
+
+    /* User Info Card */
+    .user-info {
+      background: rgba(255, 255, 255, 0.05);
+      max-width: 600px;
+      margin: 40px auto;
+      padding: 25px;
+      border-radius: 15px;
+      backdrop-filter: blur(10px);
+      box-shadow: 0 0 30px rgba(0, 180, 216, 0.1);
+    }
+
+    .user-info h2 {
+      color: #00b4d8;
+      margin-bottom: 15px;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .user-info p {
+      margin: 10px 0;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      color: #a0a0a0;
+    }
+
+    /* Appointment Form */
+    #appointmentForm {
+      background: rgba(255, 255, 255, 0.05);
+      max-width: 600px;
+      margin: 20px auto;
+      padding: 30px;
+      border-radius: 15px;
+      backdrop-filter: blur(10px);
+      box-shadow: 0 0 30px rgba(0, 180, 216, 0.1);
+    }
+
+    .form-group {
+      margin-bottom: 25px;
+    }
+
+    label {
+      display: block;
+      margin-bottom: 8px;
+      color: #00b4d8;
+    }
+
+    input, select, textarea {
+      width: 100%;
+      padding: 12px;
+      background: rgba(255, 255, 255, 0.1);
+      border: 1px solid rgba(0, 180, 216, 0.3);
+      border-radius: 8px;
+      color: #fff;
+      font-size: 1rem;
+      transition: 0.3s;
+    }
+
+    input:focus, select:focus, textarea:focus {
+      outline: none;
+      border-color: #00b4d8;
+      box-shadow: 0 0 15px rgba(0, 180, 216, 0.3);
+    }
+
+    textarea {
+      resize: vertical;
+      min-height: 100px;
+    }
+
+    button[type="submit"] {
+      width: 100%;
+      padding: 15px;
+      background: linear-gradient(45deg, #00b4d8, #0077b6);
+      border: none;
+      border-radius: 8px;
+      color: #fff;
+      font-size: 1.1rem;
+      cursor: pointer;
+      transition: 0.3s;
+      margin-top: 20px;
+    }
+
+    button[type="submit"]:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 10px 20px rgba(0, 180, 216, 0.3);
+    }
+
+    /* Responsive Design */
+    @media (max-width: 768px) {
+      .user-info, #appointmentForm {
+        margin: 20px;
+        padding: 20px;
+      }
+    }
+  </style>
+</head>
+<body>
+  <!-- Animated Background -->
+  <div class="gradient-bg"></div>
+  <!-- User Info -->
+  <div class="user-info">
+    <h2>👤 <span id="userNameDisplay"></span></h2>
+    <p>📧 <span id="userEmailDisplay"></span></p>
+    <p>📱 <span id="userPhoneDisplay"></span></p>
+  </div>
+
+  <!-- Appointment Form -->
+  <form id="appointmentForm">
+    <div class="form-group">
+      <label for="userAge">Age</label>
+      <input type="number" id="userAge" placeholder="Enter your age" required>
+    </div>
+
+    <div class="form-group">
+      <label for="userGender">Gender</label>
+      <select id="userGender" required>
+        <option value="">Select Gender</option>
+        <option value="Male">Male</option>
+        <option value="Female">Female</option>
+        <option value="Other">Other</option>
+      </select>
+    </div>
+
+    <div class="form-group">
+      <label for="appointmentDate">Appointment Date</label>
+      <input type="date" id="appointmentDate" required>
+    </div>
+
+    <div class="form-group">
+      <label for="userIssue">Medical Issue</label>
+      <textarea id="userIssue" placeholder="Describe your medical issue in detail..." required></textarea>
+    </div>
+
+    <button type="submit">Book Appointment →</button>
+  </form>
+
+  <script>
+    // Enhanced User Info Display
+    firebase.auth().onAuthStateChanged(function(user){
+      if(user){
+        db.collection("users").doc(user.uid).get().then((doc) => {
+          if(doc.exists){
+            const data = doc.data();
+            document.getElementById("userNameDisplay").textContent = data.name;
+            document.getElementById("userEmailDisplay").textContent = data.email;
+            document.getElementById("userPhoneDisplay").textContent = data.phone;
+          }
+        });
+      } else {
+        window.location.href = "login.html";
+      }
+    });
+
+    // Enhanced Form Submission
+    document.getElementById("appointmentForm").addEventListener("submit", function(e){
+      e.preventDefault();
+      const age = document.getElementById("userAge").value;
+      const gender = document.getElementById("userGender").value;
+      const date = document.getElementById("appointmentDate").value;
+      const issue = document.getElementById("userIssue").value;
+
+      const btn = document.querySelector("button[type='submit']");
+      btn.innerHTML = "Booking...";
+      btn.disabled = true;
+
+      firebase.auth().onAuthStateChanged(function(user){
+        if(user){
+          db.collection("appointments").add({
+            userId: user.uid,
+            name: document.getElementById("userNameDisplay").textContent,
+            email: document.getElementById("userEmailDisplay").textContent,
+            phone: document.getElementById("userPhoneDisplay").textContent,
+            age, gender, date, issue,
+            doctorAccepted: false,
+            timestamp: firebase.firestore.FieldValue.serverTimestamp()
+          })
+          .then(() => {
+            showNotification("✅ Appointment booked successfully!");
+            document.getElementById("appointmentForm").reset();
+          })
+          .catch((error) => {
+            showNotification("❌ Error booking appointment");
+            console.error("Error submitting appointment: ", error);
+          })
+          .finally(() => {
+            btn.innerHTML = "Book Appointment →";
+            btn.disabled = false;
+          });
+        }
+      });
+    });
+
+    // Notification System
+    function showNotification(message) {
+      const notification = document.createElement("div");
+      notification.className = "notification";
+      notification.textContent = message;
+      document.body.appendChild(notification);
+      
+      setTimeout(() => notification.remove(), 3000);
+    }
+  </script>
+</body>
+</html>

@@ -1,0 +1,368 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <title>MediBook - Access Portal</title>
+  <!-- Firebase libraries -->
+  <script src="https://www.gstatic.com/firebasejs/7.20.0/firebase-app.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/7.20.0/firebase-firestore.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/7.20.0/firebase-auth.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/emailjs-com@3/dist/email.min.js"></script>
+  <script src="firebaseConfig.js"></script>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+      font-family: 'Segoe UI', sans-serif;
+    }
+
+    body {
+      background: #0a0e1a;
+      min-height: 100vh;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      overflow: hidden;
+    }
+
+    .auth-container {
+      position: relative;
+      width: 800px;
+      height: 500px;
+      perspective: 1000px;
+    }
+
+    .flip-card {
+      position: relative;
+      width: 100%;
+      height: 100%;
+      transition: transform 0.8s;
+      transform-style: preserve-3d;
+    }
+
+    .flip-card.flipped {
+      transform: rotateY(180deg);
+    }
+
+    .auth-form {
+      position: absolute;
+      width: 100%;
+      height: 100%;
+      backface-visibility: hidden;
+      background: rgba(255, 255, 255, 0.05);
+      border-radius: 20px;
+      padding: 40px;
+      backdrop-filter: blur(10px);
+      box-shadow: 0 15px 35px rgba(0, 0, 0, 0.2);
+    }
+
+    .login-form {
+      transform: rotateY(0deg);
+    }
+
+    .signup-form {
+      transform: rotateY(180deg);
+    }
+
+    h2 {
+      color: #fff;
+      font-size: 2.5rem;
+      margin-bottom: 30px;
+      background: linear-gradient(45deg, #00b4d8, #90e0ef);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+
+    .form-group {
+      position: relative;
+      margin-bottom: 30px;
+    }
+
+    input {
+      width: 100%;
+      padding: 15px;
+      background: rgba(255, 255, 255, 0.1);
+      border: none;
+      border-radius: 8px;
+      color: #fff;
+      font-size: 1rem;
+      transition: 0.3s;
+    }
+
+    input:focus {
+      outline: none;
+      background: rgba(255, 255, 255, 0.15);
+      box-shadow: 0 0 15px rgba(0, 180, 216, 0.3);
+    }
+
+    label {
+      position: absolute;
+      left: 15px;
+      top: 50%;
+      transform: translateY(-50%);
+      color: rgba(255, 255, 255, 0.6);
+      pointer-events: none;
+      transition: 0.3s;
+    }
+
+    input:focus ~ label,
+    input:valid ~ label {
+      top: -10px;
+      left: 5px;
+      font-size: 0.8rem;
+      color: #00b4d8;
+    }
+
+    button {
+      width: 100%;
+      padding: 15px;
+      background: linear-gradient(45deg, #00b4d8, #0077b6);
+      border: none;
+      border-radius: 8px;
+      color: #fff;
+      font-size: 1.1rem;
+      cursor: pointer;
+      transition: 0.3s;
+      position: relative;
+      overflow: hidden;
+    }
+
+    button:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 10px 20px rgba(0, 180, 216, 0.3);
+    }
+
+    .toggle-form {
+      text-align: center;
+      margin-top: 20px;
+      color: rgba(255, 255, 255, 0.6);
+    }
+
+    .toggle-form a {
+      color: #00b4d8;
+      cursor: pointer;
+      text-decoration: none;
+      transition: 0.3s;
+    }
+
+    .toggle-form a:hover {
+      color: #90e0ef;
+      text-shadow: 0 0 15px rgba(144, 224, 239, 0.3);
+    }
+
+    .social-login {
+      margin-top: 30px;
+      display: flex;
+      gap: 15px;
+      justify-content: center;
+    }
+
+    .social-btn {
+      padding: 12px 25px;
+      border-radius: 8px;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      background: rgba(255, 255, 255, 0.1);
+      transition: 0.3s;
+    }
+
+    .social-btn:hover {
+      background: rgba(255, 255, 255, 0.2);
+    }
+
+    .error-message {
+      color: #ff4444;
+      font-size: 0.9rem;
+      margin-top: 5px;
+      display: none;
+      animation: fadeIn 0.3s;
+    }
+
+    @keyframes fadeIn {
+      from { opacity: 0; }
+      to { opacity: 1; }
+    }
+
+    @media (max-width: 768px) {
+      .auth-container {
+        width: 90%;
+        height: auto;
+        margin: 20px 0;
+      }
+
+      .auth-form {
+        position: relative;
+        backface-visibility: visible;
+        transform: none !important;
+        margin-bottom: 20px;
+      }
+
+      .flip-card {
+        transform: none !important;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="auth-container">
+    <div class="flip-card" id="flipCard">
+      <!-- Login Form -->
+      <div class="auth-form login-form">
+        <h2>Welcome Back</h2>
+        <form id="loginForm">
+          <div class="form-group">
+            <input type="email" id="loginEmail" required>
+            <label>Email Address</label>
+            <div class="error-message" id="loginEmailError"></div>
+          </div>
+          <div class="form-group">
+            <input type="password" id="loginPassword" required>
+            <label>Password</label>
+            <div class="error-message" id="loginPasswordError"></div>
+          </div>
+          <button type="submit">Login →</button>
+        </form>
+        <div class="toggle-form">
+          New here? <a onclick="toggleFlip()">Create Account</a>
+        </div>
+      </div>
+
+      <!-- Signup Form -->
+      <div class="auth-form signup-form">
+        <h2>Get Started</h2>
+        <form id="signupForm">
+          <div class="form-group">
+            <input type="text" id="signupName" required>
+            <label>Full Name</label>
+            <div class="error-message" id="nameError"></div>
+          </div>
+          <div class="form-group">
+            <input type="email" id="signupEmail" required>
+            <label>Email Address</label>
+            <div class="error-message" id="emailError"></div>
+          </div>
+          <div class="form-group">
+            <input type="tel" id="signupPhone" required>
+            <label>Phone Number</label>
+            <div class="error-message" id="phoneError"></div>
+          </div>
+          <div class="form-group">
+            <input type="password" id="signupPassword" required>
+            <label>Password</label>
+            <div class="error-message" id="passwordError"></div>
+          </div>
+          <button type="submit">Create Account →</button>
+        </form>
+        <div class="toggle-form">
+          Already have an account? <a onclick="toggleFlip()">Login Here</a>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    // Flip animation toggle
+    function toggleFlip() {
+      document.getElementById('flipCard').classList.toggle('flipped');
+    }
+
+    // Enhanced form validation
+    function showError(elementId, message) {
+      const errorElement = document.getElementById(elementId);
+      errorElement.textContent = message;
+      errorElement.style.display = 'block';
+    }
+
+    // Signup with improved validation
+    document.getElementById("signupForm").addEventListener("submit", async (e) => {
+      e.preventDefault();
+      
+      const name = document.getElementById("signupName").value.trim();
+      const email = document.getElementById("signupEmail").value.trim();
+      const phone = document.getElementById("signupPhone").value.trim();
+      const password = document.getElementById("signupPassword").value;
+
+      // Clear previous errors
+      document.querySelectorAll('.error-message').forEach(el => el.style.display = 'none');
+
+      try {
+        const userCredential = await firebase.auth().createUserWithEmailAndPassword(email, password);
+        await db.collection("users").doc(userCredential.user.uid).set({
+          name,
+          email,
+          phone,
+          createdAt: firebase.firestore.FieldValue.serverTimestamp()
+        });
+        
+        // Show success animation
+        document.querySelector('.signup-form').classList.add('success');
+        setTimeout(() => {
+          window.location.href = "appointmentpage.html";
+        }, 1500);
+      } catch (error) {
+        const errorCode = error.code;
+        const errorMessage = error.message;
+        
+        // Handle specific errors
+        if (errorCode === 'auth/email-already-in-use') {
+          showError('emailError', 'Email is already registered');
+        } else if (errorCode === 'auth/weak-password') {
+          showError('passwordError', 'Password should be at least 6 characters');
+        } else {
+          showError('emailError', errorMessage);
+        }
+      }
+    });
+
+    // Enhanced login functionality
+    document.getElementById("loginForm").addEventListener("submit", async (e) => {
+      e.preventDefault();
+      const email = document.getElementById("loginEmail").value.trim();
+      const password = document.getElementById("loginPassword").value;
+
+      try {
+        await firebase.auth().signInWithEmailAndPassword(email, password);
+        // Add login animation
+        document.querySelector('.login-form').classList.add('success');
+        setTimeout(() => {
+          window.location.href = "appointmentpage.html";
+        }, 1500);
+      } catch (error) {
+        const errorCode = error.code;
+        const errorMessage = error.message;
+        
+        if (errorCode === 'auth/user-not-found') {
+          showError('loginEmailError', 'User not found');
+        } else if (errorCode === 'auth/wrong-password') {
+          showError('loginPasswordError', 'Incorrect password');
+        } else {
+          showError('loginEmailError', errorMessage);
+        }
+      }
+    });
+
+    // Social login functions
+    async function googleLogin() {
+      const provider = new firebase.auth.GoogleAuthProvider();
+      try {
+        await firebase.auth().signInWithPopup(provider);
+        window.location.href = "appointmentpage.html";
+      } catch (error) {
+        console.error("Google login error:", error);
+      }
+    }
+
+    async function githubLogin() {
+      const provider = new firebase.auth.GithubAuthProvider();
+      try {
+        await firebase.auth().signInWithPopup(provider);
+        window.location.href = "appointmentpage.html";
+      } catch (error) {
+        console.error("GitHub login error:", error);
+      }
+    }
+  </script>
+</body>
+</html>
